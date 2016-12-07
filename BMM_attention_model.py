@@ -56,7 +56,7 @@ def att_shape(input_shape):
 def att_shape2(input_shape):
     return input_shape[0][0:4]
 
-def minst_attention(noise=False, attention=True):
+def minst_attention(inc_noise=False, attention=True):
     #make layers
     inputs = Input(shape=(1,image_size,image_size),name='input')
     
@@ -74,7 +74,7 @@ def minst_attention(noise=False, attention=True):
     dense_2a = Dense(10, activation = 'softmax', init='uniform',name='dense_2')
     
     #make actual model
-    if noise: inputs = noise.GaussianNoise(2.5)(inputs)
+    if inc_noise: inputs = noise.GaussianNoise(2.5)(inputs)
     input_pad = ZeroPadding2D((1,1),input_shape=(1,image_size,image_size),name='input_pad')(inputs)
     
     conv_1 = conv_1a(input_pad)
