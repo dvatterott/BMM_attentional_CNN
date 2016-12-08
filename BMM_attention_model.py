@@ -134,6 +134,8 @@ sgd = SGD(lr=0.01, decay=1e-6, momentum=0.5, nesterov=True)
 model.compile(loss = 'categorical_crossentropy', optimizer = sgd, metrics=['accuracy'])
 
 model_history = model.fit(X_train, y_trainCAT,batch_size=1,validation_data=(X_test,y_testCAT),nb_epoch=12)
+
+import pickle
 pickle.dump( model_history.history['val_acc'], open( "./Performance/minst_att2_nonoise_performance.p", "wb" ) )
 score = model_history.history['val_acc'][-1]
 all_score = model_history.history['val_acc']
