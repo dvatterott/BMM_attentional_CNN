@@ -74,8 +74,11 @@ def minst_attention(inc_noise=False, attention=True):
     dense_2a = Dense(10, activation = 'softmax', init='uniform',name='dense_2')
     
     #make actual model
-    if inc_noise: inputs = noise.GaussianNoise(2.5)(inputs)
-    input_pad = ZeroPadding2D((1,1),input_shape=(1,image_size,image_size),name='input_pad')(inputs)
+    if inc_noise: 
+        inputs_noise = noise.GaussianNoise(2.5)(inputs)
+        input_pad = ZeroPadding2D((1,1),input_shape=(1,image_size,image_size),name='input_pad')(inputs_noise)
+    else:
+        input_pad = ZeroPadding2D((1,1),input_shape=(1,image_size,image_size),name='input_pad')(inputs)
     
     conv_1 = conv_1a(input_pad)
     conv_1 = maxp_1a(conv_1)
@@ -126,11 +129,11 @@ from keras.utils.np_utils import to_categorical
 y_trainCAT = to_categorical(y_train)
 y_testCAT = to_categorical(y_test)
 
-model = minst_attention()
+model = minst_attention(inc_noise=False)
 sgd = SGD(lr=0.01, decay=1e-6, momentum=0.5, nesterov=True)
 model.compile(loss = 'categorical_crossentropy', optimizer = sgd, metrics=['accuracy'])
 
 model_history = model.fit(X_train, y_trainCAT,batch_size=1,validation_data=(X_test,y_testCAT),nb_epoch=12)
-pickle.dump( model_history.history['val_acc'], open( "./Performance/minst_onesatt2_noise_performance.p", "wb" ) )
+pickle.dump( model_history.history['val_acc'], open( "./Performance/minst_att2_nonoise_performance.p", "wb" ) )
 score = model_history.history['val_acc'][-1]
 all_score = model_history.history['val_acc']
