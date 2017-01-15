@@ -4,6 +4,8 @@ from keras.models import Model
 from keras.optimizers import SGD
 from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
 
+assert K.backend() == 'theano'
+assert K.image_dim_ordering() == 'th'
 
 def crosschannelnormalization(alpha = 1e-4, k=2, beta=0.75, n=5,**kwargs):
     """
@@ -38,12 +40,12 @@ def attention_control(args):
     find_att = K.mean(find_att,axis=0)
     find_att = find_att/K.sum(find_att,axis=0)
     find_att = K.repeat_elements(find_att,32,axis=0)
-    find_att = K.reshape(find_att,(1,32,15,15))    
+    find_att = K.reshape(find_att,(1,32,15,15))
     return find_att
 
 def no_attention_control(args):
     x,dense_2 = args
-    find_att = K.ones(shape=(1,32,15,15))    
+    find_att = K.ones(shape=(1,32,15,15))
     return find_att
 
 def change_shape1(x):
@@ -59,62 +61,62 @@ def att_shape2(input_shape):
 def minst_attention(inc_noise=False, attention=True):
     #make layers
     inputs = Input(shape=(1,image_size,image_size),name='input')
-    
+
     conv_1a = Convolution2D(32, 3, 3,activation='relu',name='conv_1')
     maxp_1a = MaxPooling2D((3, 3), strides=(2,2),name='convmax_1')
     norm_1a = crosschannelnormalization(name="convpool_1")
     zero_1a = ZeroPadding2D((2,2),name='convzero_1')
-    
+
     conv_2a = Convolution2D(32,3,3,activation='relu',name='conv_2')
     maxp_2a = MaxPooling2D((3, 3), strides=(2,2),name='convmax_2')
     norm_2a = crosschannelnormalization(name="convpool_2")
     zero_2a = ZeroPadding2D((2,2),name='convzero_2')
-    
+
     dense_1a = Lambda(global_average_pooling,output_shape=global_average_pooling_shape,name='dense_1')
     dense_2a = Dense(10, activation = 'softmax', init='uniform',name='dense_2')
-    
+
     #make actual model
-    if inc_noise: 
+    if inc_noise:
         inputs_noise = noise.GaussianNoise(2.5)(inputs)
         input_pad = ZeroPadding2D((1,1),input_shape=(1,image_size,image_size),name='input_pad')(inputs_noise)
     else:
         input_pad = ZeroPadding2D((1,1),input_shape=(1,image_size,image_size),name='input_pad')(inputs)
-    
+
     conv_1 = conv_1a(input_pad)
     conv_1 = maxp_1a(conv_1)
     conv_1 = norm_1a(conv_1)
     conv_1 = zero_1a(conv_1)
-    
+
     conv_2_x = conv_2a(conv_1)
     conv_2 = maxp_2a(conv_2_x)
     conv_2 = norm_2a(conv_2)
     conv_2 = zero_2a(conv_2)
     conv_2 = Dropout(0.5)(conv_2)
-    
+
     dense_1 = dense_1a(conv_2)
     dense_2 = dense_2a(dense_1)
-    
+
     conv_shape1 = Lambda(change_shape1,output_shape=(32,),name='chg_shape')(conv_2_x)
     find_att = dense_2a(conv_shape1)
-    
+
     if attention:
         find_att = Lambda(attention_control,output_shape=att_shape,name='att_con')([find_att,dense_2])
     else:
         find_att = Lambda(no_attention_control,output_shape=att_shape,name='att_con')([find_att,dense_2])
 
     zero_3a = ZeroPadding2D((1,1),name='convzero_3')(find_att)
-    apply_attention  = Merge(mode='mul',name='attend')([zero_3a,conv_1]) 
-    
+    apply_attention  = Merge(mode='mul',name='attend')([zero_3a,conv_1])
+
     conv_3 = conv_2a(apply_attention)
     conv_3 = maxp_2a(conv_3)
     conv_3 = norm_2a(conv_3)
     conv_3 = zero_2a(conv_3)
-    
+
     dense_3 = dense_1a(conv_3)
     dense_4 = dense_2a(dense_3)
-    
+
     model = Model(input=inputs,output=dense_4)
-    
+
     return model
 
 import numpy as np
@@ -133,9 +135,9 @@ model = minst_attention(inc_noise=False)
 sgd = SGD(lr=0.01, decay=1e-6, momentum=0.5, nesterov=True)
 model.compile(loss = 'categorical_crossentropy', optimizer = sgd, metrics=['accuracy'])
 
-model_history = model.fit(X_train, y_trainCAT,batch_size=1,validation_data=(X_test,y_testCAT),nb_epoch=12)
+model_history = model.fit(X_train, y_trainCAT,batch_size=1,validation_data=(X_test,y_testCAT),nb_epoch=1)
 
-import pickle
-pickle.dump( model_history.history['val_acc'], open( "./Performance/minst_att2_nonoise_performance.p", "wb" ) )
-score = model_history.history['val_acc'][-1]
-all_score = model_history.history['val_acc']
+#import pickle
+#pickle.dump( model_history.history['val_acc'], open( "./Performance/minst_att2_nonoise_performance.p", "wb" ) )
+#score = model_history.history['val_acc'][-1]
+#all_score = model_history.history['val_acc']
